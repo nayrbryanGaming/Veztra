@@ -1,0 +1,107 @@
+@import '@solana/wallet-adapter-react-ui/styles.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-void: #03000A;
+  --bg-surface: #0A0714;
+  --bg-elevated: #110E1F;
+  --bg-border: #1E1A35;
+  --sol-purple: #9945FF;
+  --sol-green: #14F195;
+  --sol-blue: #00C2FF;
+  --text-primary: #F8F6FF;
+  --text-secondary: #A09ABF;
+  --text-muted: #5C5680;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #03000A;
+  color: #F8F6FF;
+  font-family: var(--font-dm-sans), 'DM Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Wallet adapter overrides */
+.wallet-adapter-button {
+  font-family: 'DM Sans', sans-serif !important;
+}
+
+.wallet-adapter-modal-wrapper {
+  background: #0A0714 !important;
+  border: 1px solid #1E1A35 !important;
+}
+
+.wallet-adapter-modal-title {
+  color: #F8F6FF !important;
+  font-family: 'Syne', sans-serif !important;
+}
+
+.wallet-adapter-modal-list li {
+  border-color: #1E1A35 !important;
+}
+
+.wallet-adapter-modal-list .wallet-adapter-button {
+  background: #110E1F !important;
+}
+
+.wallet-adapter-modal-list .wallet-adapter-button:hover {
+  background: #1E1A35 !important;
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(90deg, #9945FF, #14F195);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Noise texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* Shimmer animation for skeleton */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Selection color */
+::selection {
+  background: rgba(153, 69, 255, 0.3);
+  color: #F8F6FF;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #03000A;
+}
+::-webkit-scrollbar-thumb {
+  background: #1E1A35;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9945FF40;
+}
