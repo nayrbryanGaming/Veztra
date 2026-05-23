@@ -22,9 +22,9 @@ export function useWithdraw() {
       const streamPDA = stream.publicKey
       const [vaultPDA] = getVaultPDA(streamPDA)
       const mint = new PublicKey(stream.mint)
+      const creator = new PublicKey(stream.creator)
 
       const recipientTokenAccount = await getAssociatedTokenAddress(mint, publicKey)
-      const vaultTokenAccount = await getAssociatedTokenAddress(mint, vaultPDA, true)
 
       const toastId = toast.loading('Awaiting wallet approval...')
 
@@ -32,12 +32,12 @@ export function useWithdraw() {
         const tx = await program.methods
           .withdraw()
           .accounts({
+            creator,
             recipient: publicKey,
+            mint,
             stream: streamPDA,
             vault: vaultPDA,
-            vaultTokenAccount,
             recipientTokenAccount,
-            mint,
             tokenProgram: TOKEN_PROGRAM_ID,
             associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,

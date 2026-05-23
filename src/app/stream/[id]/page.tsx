@@ -9,6 +9,7 @@ import { StreamStatusBadge, VestingTypeBadge } from '@/components/stream/StreamS
 import { VestingProgress } from '@/components/stream/VestingProgress'
 import { WithdrawButton } from '@/components/stream/WithdrawButton'
 import { CancelButton } from '@/components/stream/CancelButton'
+import { UnlockMilestoneButton } from '@/components/stream/UnlockMilestoneButton'
 import { AddressDisplay } from '@/components/ui/AddressDisplay'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Button } from '@/components/ui/Button'
@@ -170,6 +171,14 @@ export default function StreamDetailPage() {
 
               <div className="space-y-3 pt-2 border-t border-bg-border">
                 {isRecipient && <WithdrawButton stream={stream} />}
+                {isCreator && stream.vestingType === 'milestone' && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-text-muted">
+                      When the milestone condition is met, click below to release tokens to the recipient.
+                    </p>
+                    <UnlockMilestoneButton stream={stream} />
+                  </div>
+                )}
                 {isCreator && (
                   <div className="space-y-2">
                     <p className="text-xs text-text-muted">

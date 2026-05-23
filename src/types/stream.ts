@@ -1,7 +1,7 @@
 import { PublicKey } from '@solana/web3.js'
 import { BN } from '@coral-xyz/anchor'
 
-export type VestingType = 'linear' | 'cliff'
+export type VestingType = 'linear' | 'cliff' | 'milestone'
 
 export type StreamStatus = 'active' | 'completed' | 'cancelled'
 
@@ -17,9 +17,10 @@ export interface StreamAccount {
     startTime: BN
     endTime: BN
     cliffTime: BN | null
-    vestingType: { linear?: {} } | { cliff?: {} }
+    vestingType: { linear?: {} } | { cliff?: {} } | { milestone?: {} }
     status: { active?: {} } | { completed?: {} } | { cancelled?: {} }
     bump: number
+    milestoneUnlocked: boolean
   }
 }
 
@@ -40,6 +41,7 @@ export interface ParsedStream {
   status: StreamStatus
   progressPercent: number
   timeRemaining: string
+  milestoneUnlocked: boolean
 }
 
 export interface CreateStreamFormData {

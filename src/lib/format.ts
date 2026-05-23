@@ -53,22 +53,29 @@ export function calcVestedAmount(
   startTime: number,
   endTime: number,
   cliffTime: number | null,
-  vestingType: 'linear' | 'cliff',
-  now = Date.now() / 1000
+  vestingType: 'linear' | 'cliff' | 'milestone',
+  now = Date.now() / 1000,
+  milestoneUnlocked = false,
 ): number {
   if (now >= endTime) return totalAmount
   if (now < startTime) return 0
 
+  // Milestone: all-or-nothing based on creator unlock
+  if (vestingType === 'milestone') {
+    return milestoneUnlocked ? totalAmount : 0
+  }
+
+  // Cliff: all tokens unlock at cliff_time
   if (vestingType === 'cliff') {
     const cliff = cliffTime ?? endTime
     return now >= cliff ? totalAmount : 0
   }
 
-  // Linear vesting
+  // Linear: gradual release, optionally gated by cliff
   const cliff = cliffTime
   if (cliff && now < cliff) return 0
 
-  const linearStart = cliff ?? startTime
+  const linearStart = startTime
   const elapsed = now - linearStart
   const duration = endTime - linearStart
   if (duration <= 0) return totalAmount

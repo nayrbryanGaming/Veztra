@@ -18,7 +18,7 @@ interface CreateStreamParams {
   startTimestamp: number
   endTimestamp: number
   cliffTimestamp?: number
-  vestingType: 'linear' | 'cliff'
+  vestingType: 'linear' | 'cliff' | 'milestone'
 }
 
 export function useCreateStream() {
@@ -38,12 +38,13 @@ export function useCreateStream() {
       const [vaultPDA] = getVaultPDA(streamPDA)
 
       const creatorTokenAccount = await getAssociatedTokenAddress(mint, publicKey)
-      const vaultTokenAccount = await getAssociatedTokenAddress(mint, vaultPDA, true)
 
       const amountBN = new BN(Math.floor(params.amount * 1_000_000))
-      const vestingTypeArg = params.vestingType === 'cliff'
-        ? { cliff: {} }
-        : { linear: {} }
+
+      let vestingTypeArg: { linear?: {} } | { cliff?: {} } | { milestone?: {} }
+      if (params.vestingType === 'cliff') vestingTypeArg = { cliff: {} }
+      else if (params.vestingType === 'milestone') vestingTypeArg = { milestone: {} }
+      else vestingTypeArg = { linear: {} }
 
       const toastId = toast.loading('Awaiting wallet approval...')
 
@@ -59,11 +60,10 @@ export function useCreateStream() {
           .accounts({
             creator: publicKey,
             recipient,
+            mint,
             stream: streamPDA,
             vault: vaultPDA,
-            mint,
             creatorTokenAccount,
-            vaultTokenAccount,
             tokenProgram: TOKEN_PROGRAM_ID,
             associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,

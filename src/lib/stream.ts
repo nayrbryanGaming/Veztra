@@ -9,8 +9,13 @@ export function parseStreamAccount(raw: StreamAccount): ParsedStream {
   const startTime = account.startTime.toNumber()
   const endTime = account.endTime.toNumber()
   const cliffTime = account.cliffTime ? account.cliffTime.toNumber() : null
+  const milestoneUnlocked = account.milestoneUnlocked ?? false
 
-  const vestingType: VestingType = 'cliff' in (account.vestingType as any) ? 'cliff' : 'linear'
+  const vt = account.vestingType as any
+  let vestingType: VestingType
+  if ('cliff' in vt) vestingType = 'cliff'
+  else if ('milestone' in vt) vestingType = 'milestone'
+  else vestingType = 'linear'
 
   let status: StreamStatus = 'active'
   const rawStatus = account.status as any
@@ -19,8 +24,8 @@ export function parseStreamAccount(raw: StreamAccount): ParsedStream {
 
   const now = Date.now() / 1000
   const vestedAmount = status === 'cancelled'
-    ? calcVestedAmount(amount, startTime, endTime, cliffTime, vestingType, Math.min(now, endTime))
-    : calcVestedAmount(amount, startTime, endTime, cliffTime, vestingType)
+    ? calcVestedAmount(amount, startTime, endTime, cliffTime, vestingType, Math.min(now, endTime), milestoneUnlocked)
+    : calcVestedAmount(amount, startTime, endTime, cliffTime, vestingType, undefined, milestoneUnlocked)
 
   const claimableAmount = Math.max(0, vestedAmount - claimedAmount)
   const progressPercent = amount > 0 ? (vestedAmount / amount) * 100 : 0
@@ -44,5 +49,6 @@ export function parseStreamAccount(raw: StreamAccount): ParsedStream {
     status,
     progressPercent: Math.min(100, progressPercent),
     timeRemaining: status === 'active' ? formatTimeRemaining(endDate) : '',
+    milestoneUnlocked,
   }
 }

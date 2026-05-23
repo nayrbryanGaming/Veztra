@@ -28,19 +28,17 @@ export function WaitlistCTA() {
         </p>
         <div className="flex flex-wrap gap-4 justify-center">
           <Link
-            href="/dashboard"
+            href="/waitlist"
             className="inline-flex items-center gap-2 px-8 py-4 rounded-full text-base font-body font-semibold bg-gradient-to-r from-sol-purple to-sol-green text-bg-void hover:scale-[1.02] transition-all duration-200 shadow-glow-purple"
+          >
+            Join Waitlist <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-full text-base font-body font-medium text-text-secondary border border-bg-border hover:border-sol-purple/40 hover:text-text-primary transition-all duration-200"
           >
             Launch App <ArrowRight className="w-4 h-4" />
           </Link>
-          <a
-            href="https://github.com/nayrbryanGaming/Veztra"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-full text-base font-body font-medium text-text-secondary border border-bg-border hover:border-sol-purple/40 hover:text-text-primary transition-all duration-200"
-          >
-            View on GitHub <ExternalLink className="w-4 h-4" />
-          </a>
         </div>
       </div>
     </section>

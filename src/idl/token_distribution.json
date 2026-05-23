@@ -7,11 +7,10 @@
       "accounts": [
         { "name": "creator", "isMut": true, "isSigner": true },
         { "name": "recipient", "isMut": false, "isSigner": false },
+        { "name": "mint", "isMut": false, "isSigner": false },
         { "name": "stream", "isMut": true, "isSigner": false },
         { "name": "vault", "isMut": true, "isSigner": false },
-        { "name": "mint", "isMut": false, "isSigner": false },
         { "name": "creatorTokenAccount", "isMut": true, "isSigner": false },
-        { "name": "vaultTokenAccount", "isMut": true, "isSigner": false },
         { "name": "tokenProgram", "isMut": false, "isSigner": false },
         { "name": "associatedTokenProgram", "isMut": false, "isSigner": false },
         { "name": "systemProgram", "isMut": false, "isSigner": false },
@@ -28,12 +27,12 @@
     {
       "name": "withdraw",
       "accounts": [
+        { "name": "creator", "isMut": false, "isSigner": false },
         { "name": "recipient", "isMut": true, "isSigner": true },
+        { "name": "mint", "isMut": false, "isSigner": false },
         { "name": "stream", "isMut": true, "isSigner": false },
         { "name": "vault", "isMut": true, "isSigner": false },
-        { "name": "vaultTokenAccount", "isMut": true, "isSigner": false },
         { "name": "recipientTokenAccount", "isMut": true, "isSigner": false },
-        { "name": "mint", "isMut": false, "isSigner": false },
         { "name": "tokenProgram", "isMut": false, "isSigner": false },
         { "name": "associatedTokenProgram", "isMut": false, "isSigner": false },
         { "name": "systemProgram", "isMut": false, "isSigner": false }
@@ -44,13 +43,25 @@
       "name": "cancelStream",
       "accounts": [
         { "name": "creator", "isMut": true, "isSigner": true },
+        { "name": "recipient", "isMut": false, "isSigner": false },
+        { "name": "mint", "isMut": false, "isSigner": false },
         { "name": "stream", "isMut": true, "isSigner": false },
         { "name": "vault", "isMut": true, "isSigner": false },
-        { "name": "vaultTokenAccount", "isMut": true, "isSigner": false },
         { "name": "creatorTokenAccount", "isMut": true, "isSigner": false },
-        { "name": "mint", "isMut": false, "isSigner": false },
+        { "name": "recipientTokenAccount", "isMut": true, "isSigner": false },
         { "name": "tokenProgram", "isMut": false, "isSigner": false },
+        { "name": "associatedTokenProgram", "isMut": false, "isSigner": false },
         { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "unlockMilestone",
+      "accounts": [
+        { "name": "creator", "isMut": true, "isSigner": true },
+        { "name": "recipient", "isMut": false, "isSigner": false },
+        { "name": "mint", "isMut": false, "isSigner": false },
+        { "name": "stream", "isMut": true, "isSigner": false }
       ],
       "args": []
     }
@@ -72,7 +83,8 @@
           { "name": "cliffTime", "type": { "option": "i64" } },
           { "name": "vestingType", "type": { "defined": "VestingType" } },
           { "name": "status", "type": { "defined": "StreamStatus" } },
-          { "name": "bump", "type": "u8" }
+          { "name": "bump", "type": "u8" },
+          { "name": "milestoneUnlocked", "type": "bool" }
         ]
       }
     }
@@ -84,7 +96,8 @@
         "kind": "enum",
         "variants": [
           { "name": "Linear" },
-          { "name": "Cliff" }
+          { "name": "Cliff" },
+          { "name": "Milestone" }
         ]
       }
     },
@@ -101,16 +114,18 @@
     }
   ],
   "errors": [
-    { "code": 6000, "name": "StreamAlreadyExists", "msg": "Stream already exists for this recipient" },
-    { "code": 6001, "name": "NothingToClaim", "msg": "Nothing to claim yet" },
-    { "code": 6002, "name": "UnauthorizedWithdraw", "msg": "Only the stream recipient can withdraw" },
-    { "code": 6003, "name": "UnauthorizedCancel", "msg": "Only the stream creator can cancel" },
-    { "code": 6004, "name": "StreamAlreadyCancelled", "msg": "Stream already cancelled" },
-    { "code": 6005, "name": "StreamAlreadyCompleted", "msg": "Stream already completed" },
-    { "code": 6006, "name": "InvalidSchedule", "msg": "Invalid vesting schedule" },
-    { "code": 6007, "name": "InvalidCliffDate", "msg": "Cliff date must be between start and end dates" },
-    { "code": 6008, "name": "ZeroAmount", "msg": "Amount must be greater than zero" },
-    { "code": 6009, "name": "InsufficientBalance", "msg": "Insufficient token balance" }
+    { "code": 6000, "name": "InvalidAmount",           "msg": "Amount must be greater than zero" },
+    { "code": 6001, "name": "InvalidTimeRange",        "msg": "End time must be after start time" },
+    { "code": 6002, "name": "InvalidCliffTime",        "msg": "Cliff time must be between start and end times" },
+    { "code": 6003, "name": "Unauthorized",            "msg": "Unauthorized: only the stream creator can perform this action" },
+    { "code": 6004, "name": "AlreadyCancelled",        "msg": "Stream has already been cancelled" },
+    { "code": 6005, "name": "FullyVested",             "msg": "Stream is fully vested — nothing to cancel or withdraw" },
+    { "code": 6006, "name": "NothingToWithdraw",       "msg": "Nothing to withdraw at this time" },
+    { "code": 6007, "name": "CliffNotReached",         "msg": "Cliff period has not been reached yet" },
+    { "code": 6008, "name": "StreamExpired",           "msg": "Stream has expired beyond the grace period" },
+    { "code": 6009, "name": "NotMilestoneStream",      "msg": "This stream is not a milestone-type stream" },
+    { "code": 6010, "name": "MilestoneAlreadyUnlocked","msg": "Milestone has already been unlocked" },
+    { "code": 6011, "name": "MilestoneNotUnlocked",   "msg": "Milestone has not been unlocked yet — creator must unlock first" }
   ],
   "metadata": {
     "address": "GarNqFaBLcyhb3knGu7s9qkESPJvVD7wHKDakWbCWiVC"

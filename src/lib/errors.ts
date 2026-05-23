@@ -1,20 +1,24 @@
 const ANCHOR_ERRORS: Record<number, string> = {
-  6000: 'Stream already exists for this recipient',
-  6001: 'Nothing to claim yet — tokens are still vesting',
-  6002: 'Only the stream recipient can withdraw',
-  6003: 'Only the stream creator can cancel',
-  6004: 'This stream has already been cancelled',
-  6005: 'This stream has already completed',
-  6006: 'Invalid vesting schedule — end date before start date',
-  6007: 'Cliff date must be between start and end dates',
-  6008: 'Amount must be greater than zero',
-  6009: 'Insufficient token balance',
+  6000: 'Amount must be greater than zero',
+  6001: 'End time must be after start time',
+  6002: 'Cliff time must be between start and end times',
+  6003: 'Unauthorized — only the stream creator can do that',
+  6004: 'Stream has already been cancelled',
+  6005: 'Stream is fully vested — nothing to cancel or withdraw',
+  6006: 'Nothing to withdraw right now — tokens are still vesting',
+  6007: 'Cliff period not reached yet — check back later',
+  6008: 'Stream has expired beyond the grace period',
+  6009: 'This stream is not a milestone-type stream',
+  6010: 'Milestone has already been unlocked',
+  6011: 'Milestone not yet unlocked — creator must trigger the milestone first',
 }
 
 export function parseAnchorError(error: any): string {
+  // Check direct error code
   const code = error?.error?.errorCode?.number
   if (code !== undefined && ANCHOR_ERRORS[code]) return ANCHOR_ERRORS[code]
 
+  // Check in transaction logs
   const logs = error?.logs as string[] | undefined
   if (logs) {
     for (const log of logs) {
@@ -26,12 +30,17 @@ export function parseAnchorError(error: any): string {
     }
   }
 
-  if (error?.message?.includes('User rejected')) return 'Transaction cancelled.'
-  if (error?.message?.includes('insufficient lamports'))
-    return 'Insufficient SOL for transaction fees. Add SOL to your wallet.'
-  if (error?.message?.includes('blockhash'))
+  // Common system-level errors
+  if (error?.message?.includes('User rejected') || error?.message?.includes('rejected'))
+    return 'Transaction cancelled by user.'
+  if (error?.message?.includes('insufficient lamports') || error?.message?.includes('not enough SOL'))
+    return 'Insufficient SOL for transaction fees. Add devnet SOL to your wallet.'
+  if (error?.message?.includes('blockhash') || error?.message?.includes('expired'))
     return 'Network timeout. Please try again.'
-  if (error?.message?.includes('0x1')) return 'Insufficient token balance.'
+  if (error?.message?.includes('0x1'))
+    return 'Insufficient token balance in your wallet.'
+  if (error?.message?.includes('already in use'))
+    return 'A stream already exists for this recipient and token combination.'
 
   return error?.message || 'Transaction failed. Please try again.'
 }

@@ -7,6 +7,7 @@ import { StreamStatusBadge, VestingTypeBadge } from './StreamStatusBadge'
 import { VestingProgress } from './VestingProgress'
 import { WithdrawButton } from './WithdrawButton'
 import { CancelButton } from './CancelButton'
+import { UnlockMilestoneButton } from './UnlockMilestoneButton'
 import { AddressDisplay } from '@/components/ui/AddressDisplay'
 import { formatDate, formatTimeRemaining, formatRawAmount } from '@/lib/format'
 import { useWallet } from '@solana/wallet-adapter-react'
@@ -77,8 +78,9 @@ export function StreamCard({ stream }: StreamCardProps) {
         </div>
 
         <div className="flex items-center justify-between gap-3 pt-1">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             {isRecipient && <WithdrawButton stream={stream} />}
+            {isCreator && stream.vestingType === 'milestone' && <UnlockMilestoneButton stream={stream} />}
             {isCreator && <CancelButton stream={stream} />}
           </div>
           <Link

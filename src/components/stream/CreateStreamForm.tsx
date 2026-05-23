@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useRouter } from 'next/navigation'
-import { TrendingUp, Layers, ArrowRight } from 'lucide-react'
+import { TrendingUp, Layers, Flag, ArrowRight } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useCreateStream } from '@/hooks/useCreateStream'
@@ -14,7 +14,7 @@ import { formatDuration } from '@/lib/format'
 import { clsx } from 'clsx'
 
 const schema = z.object({
-  vestingType: z.enum(['linear', 'cliff']),
+  vestingType: z.enum(['linear', 'cliff', 'milestone']),
   tokenMint: z.string().min(32, 'Invalid mint address').max(44, 'Invalid mint address'),
   recipient: z.string().min(32, 'Invalid wallet address').max(44, 'Invalid wallet address'),
   amount: z.coerce.number().positive('Amount must be positive').max(1_000_000_000, 'Amount too large'),
@@ -38,13 +38,34 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>
 
+const VESTING_TYPES = [
+  {
+    id: 'linear' as const,
+    icon: TrendingUp,
+    label: 'Linear',
+    description: 'Gradual release over time',
+  },
+  {
+    id: 'cliff' as const,
+    icon: Layers,
+    label: 'Cliff',
+    description: 'All tokens unlock at cliff date',
+  },
+  {
+    id: 'milestone' as const,
+    icon: Flag,
+    label: 'Milestone',
+    description: 'Unlock triggered by creator',
+  },
+]
+
 function StreamPreview({ watch }: { watch: FormData }) {
   const startDate = watch.startDate ? new Date(watch.startDate) : null
   const endDate = watch.endDate ? new Date(watch.endDate) : null
   const cliffDate = watch.hasCliff && watch.cliffDate ? new Date(watch.cliffDate) : null
 
   const duration = startDate && endDate ? formatDuration(startDate, endDate) : '—'
-  const monthlyRate = startDate && endDate && watch.amount
+  const monthlyRate = startDate && endDate && watch.amount && watch.vestingType === 'linear'
     ? (watch.amount / Math.max(1, (endDate.getTime() - startDate.getTime()) / (30 * 24 * 3600 * 1000))).toFixed(0)
     : '0'
 
@@ -58,7 +79,7 @@ function StreamPreview({ watch }: { watch: FormData }) {
             { label: 'Recipient', value: watch.recipient ? `${watch.recipient.slice(0, 6)}...${watch.recipient.slice(-4)}` : '—', mono: true },
             { label: 'Amount', value: watch.amount ? `${Number(watch.amount).toLocaleString()} tokens` : '—' },
             { label: 'Duration', value: duration },
-            { label: 'Cliff', value: cliffDate ? cliffDate.toLocaleDateString() : 'None' },
+            ...(watch.vestingType !== 'milestone' ? [{ label: 'Cliff', value: cliffDate ? cliffDate.toLocaleDateString() : 'None' }] : []),
           ].map((item) => (
             <div key={item.label} className="flex justify-between">
               <span className="text-text-muted">{item.label}</span>
@@ -67,14 +88,22 @@ function StreamPreview({ watch }: { watch: FormData }) {
           ))}
         </div>
 
-        {watch.hasCliff && cliffDate && startDate && endDate && watch.amount && (
+        {watch.vestingType === 'milestone' && watch.amount && (
+          <div className="pt-3 border-t border-bg-border space-y-2">
+            <p className="text-xs text-text-muted uppercase tracking-wider">Unlock Pattern</p>
+            <p className="text-xs text-text-secondary">
+              <span className="font-semibold text-text-primary">{Number(watch.amount).toLocaleString()} tokens</span>{' '}
+              unlock instantly when you confirm the milestone is met. No time-based vesting.
+            </p>
+          </div>
+        )}
+
+        {watch.vestingType === 'linear' && watch.hasCliff && cliffDate && startDate && endDate && watch.amount && (
           <div className="pt-3 border-t border-bg-border space-y-2">
             <p className="text-xs text-text-muted uppercase tracking-wider">Unlock Schedule</p>
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <div className="h-1.5 rounded bg-bg-border flex-1">
-                  <div className="h-full rounded bg-bg-border" style={{ width: '100%' }} />
-                </div>
+                <div className="h-1.5 rounded bg-bg-border flex-1" />
                 <span className="text-xs text-text-muted w-20">Cliff period</span>
               </div>
               <div className="flex items-center gap-2">
@@ -94,7 +123,6 @@ export function CreateStreamForm() {
   const router = useRouter()
   const { publicKey } = useWallet()
   const createStream = useCreateStream()
-  const [step, setStep] = useState<'idle' | 'pending' | 'success'>('idle')
 
   const {
     register,
@@ -116,13 +144,11 @@ export function CreateStreamForm() {
 
   const onSubmit = async (data: FormData) => {
     if (!publicKey) return
-    if (data.recipient === publicKey.toBase58()) {
-      return
-    }
+    if (data.recipient === publicKey.toBase58()) return
 
     const startTs = Math.floor(new Date(data.startDate).getTime() / 1000)
     const endTs = Math.floor(new Date(data.endDate).getTime() / 1000)
-    const cliffTs = data.hasCliff && data.cliffDate
+    const cliffTs = data.hasCliff && data.cliffDate && data.vestingType !== 'milestone'
       ? Math.floor(new Date(data.cliffDate).getTime() / 1000)
       : undefined
 
@@ -145,33 +171,35 @@ export function CreateStreamForm() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
       <form onSubmit={handleSubmit(onSubmit)} className="lg:col-span-3 space-y-8">
+
         {/* Vesting Type */}
         <div className="space-y-3">
           <p className="text-xs font-body font-semibold text-text-muted uppercase tracking-widest">Vesting Type</p>
-          <div className="grid grid-cols-2 gap-3">
-            {(['linear', 'cliff'] as const).map((type) => (
+          <div className="grid grid-cols-3 gap-3">
+            {VESTING_TYPES.map(({ id, icon: Icon, label, description }) => (
               <button
-                key={type}
+                key={id}
                 type="button"
-                onClick={() => setValue('vestingType', type)}
+                onClick={() => setValue('vestingType', id)}
                 className={clsx(
                   'relative rounded-xl p-4 text-left transition-all duration-200 border',
-                  vestingType === type
+                  vestingType === id
                     ? 'border-sol-purple bg-sol-purple/10'
                     : 'border-bg-border bg-bg-elevated hover:border-bg-border/60'
                 )}
               >
-                {type === 'linear'
-                  ? <TrendingUp className={clsx('w-5 h-5 mb-2', vestingType === type ? 'text-sol-purple' : 'text-text-muted')} />
-                  : <Layers className={clsx('w-5 h-5 mb-2', vestingType === type ? 'text-sol-purple' : 'text-text-muted')} />
-                }
-                <p className="font-body font-semibold text-sm text-text-primary capitalize">{type}</p>
-                <p className="text-xs text-text-muted mt-0.5">
-                  {type === 'linear' ? 'Gradual release over time' : 'All at cliff date'}
-                </p>
+                <Icon className={clsx('w-5 h-5 mb-2', vestingType === id ? 'text-sol-purple' : 'text-text-muted')} />
+                <p className="font-body font-semibold text-sm text-text-primary">{label}</p>
+                <p className="text-xs text-text-muted mt-0.5">{description}</p>
               </button>
             ))}
           </div>
+
+          {vestingType === 'milestone' && (
+            <div className="p-3 rounded-xl text-xs text-text-secondary" style={{ background: 'rgba(153,69,255,0.08)', border: '1px solid rgba(153,69,255,0.2)' }}>
+              💡 <strong className="text-text-primary">Milestone streams:</strong> Tokens are locked until you manually confirm the milestone is complete. Useful for deliverable-based payments or conditional grants.
+            </div>
+          )}
         </div>
 
         {/* Token */}
@@ -199,13 +227,15 @@ export function CreateStreamForm() {
           type="number"
           placeholder="0"
           error={errors.amount?.message}
-          helper="Total amount to be distributed over the vesting period"
+          helper="Total amount to be distributed. For milestone streams, all tokens unlock at once when you trigger the milestone."
           {...register('amount')}
         />
 
         {/* Schedule */}
         <div className="space-y-4">
-          <p className="text-xs font-body font-semibold text-text-muted uppercase tracking-widest">Vesting Schedule</p>
+          <p className="text-xs font-body font-semibold text-text-muted uppercase tracking-widest">
+            {vestingType === 'milestone' ? 'Stream Window' : 'Vesting Schedule'}
+          </p>
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Start Date"
@@ -219,37 +249,45 @@ export function CreateStreamForm() {
               type="date"
               min={today}
               error={errors.endDate?.message}
+              helper={vestingType === 'milestone' ? 'Deadline for milestone (stream expires after this)' : undefined}
               {...register('endDate')}
             />
           </div>
 
-          <div className="space-y-3">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                {...register('hasCliff')}
-                className="w-4 h-4 accent-sol-purple"
-              />
-              <span className="text-sm text-text-secondary">Add cliff period</span>
-            </label>
-            {hasCliff && (
-              <Input
-                label="Cliff Date"
-                type="date"
-                min={today}
-                error={errors.cliffDate?.message}
-                helper="No tokens unlock before this date. After cliff, linear vesting begins."
-                {...register('cliffDate')}
-              />
-            )}
-          </div>
+          {vestingType !== 'milestone' && (
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  {...register('hasCliff')}
+                  className="w-4 h-4 accent-sol-purple"
+                />
+                <span className="text-sm text-text-secondary">Add cliff period</span>
+              </label>
+              {hasCliff && (
+                <Input
+                  label="Cliff Date"
+                  type="date"
+                  min={today}
+                  error={errors.cliffDate?.message}
+                  helper={
+                    vestingType === 'linear'
+                      ? 'No tokens unlock before this date. After cliff, linear vesting begins from stream start.'
+                      : 'All tokens unlock on this date.'
+                  }
+                  {...register('cliffDate')}
+                />
+              )}
+            </div>
+          )}
         </div>
 
         {/* Disclaimer */}
         <div className="p-4 rounded-xl bg-sol-purple/5 border border-sol-purple/20">
           <p className="text-xs text-text-secondary">
-            By creating this stream, tokens will be locked in a program vault. You cannot recover
-            them except through cancellation, which returns unvested tokens to your wallet.
+            By creating this stream, tokens will be locked in a program vault. You can cancel at
+            any time to return unvested tokens to your wallet. The recipient can only withdraw after
+            {vestingType === 'milestone' ? ' you unlock the milestone.' : ' tokens have vested.'}
           </p>
         </div>
 

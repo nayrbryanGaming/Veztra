@@ -28,18 +28,27 @@ export function Footer() {
 
           <div className="flex flex-wrap gap-6 md:gap-12 text-sm text-text-secondary">
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Product</p>
+              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">App</p>
               <nav className="flex flex-col gap-2">
-                <Link href="/#product" className="hover:text-text-primary transition-colors">Features</Link>
                 <Link href="/dashboard" className="hover:text-text-primary transition-colors">Dashboard</Link>
                 <Link href="/stream/create" className="hover:text-text-primary transition-colors">Create Stream</Link>
+                <Link href="/explore" className="hover:text-text-primary transition-colors">Explore Streams</Link>
               </nav>
             </div>
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Links</p>
+              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Resources</p>
               <nav className="flex flex-col gap-2">
+                <Link href="/docs" className="hover:text-text-primary transition-colors">Documentation</Link>
+                <Link href="/waitlist" className="hover:text-text-primary transition-colors">Join Waitlist</Link>
                 <a href="https://github.com/nayrbryanGaming/Veztra" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">GitHub</a>
-                <a href="https://solana.com" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">Solana</a>
+              </nav>
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Product</p>
+              <nav className="flex flex-col gap-2">
+                <Link href="/#product" className="hover:text-text-primary transition-colors">Features</Link>
+                <Link href="/#how" className="hover:text-text-primary transition-colors">How It Works</Link>
+                <Link href="/#faq" className="hover:text-text-primary transition-colors">FAQ</Link>
               </nav>
             </div>
           </div>

@@ -10,6 +10,7 @@ declare_id!("GarNqFaBLcyhb3knGu7s9qkESPJvVD7wHKDakWbCWiVC");
 pub mod token_distribution {
     use super::*;
 
+    /// Create a new vesting stream. Locks tokens into a PDA vault.
     pub fn create_stream(
         ctx: Context<CreateStream>,
         amount: u64,
@@ -40,6 +41,7 @@ pub mod token_distribution {
         stream.vesting_type = vesting_type;
         stream.status = StreamStatus::Active;
         stream.bump = ctx.bumps.stream;
+        stream.milestone_unlocked = false;
 
         let cpi_ctx = CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
@@ -58,25 +60,47 @@ pub mod token_distribution {
             amount,
             start_time,
             end_time,
+            vesting_type_label: match stream.vesting_type {
+                VestingType::Linear => "linear".to_string(),
+                VestingType::Cliff => "cliff".to_string(),
+                VestingType::Milestone => "milestone".to_string(),
+            },
         });
 
         Ok(())
     }
 
+    /// Withdraw vested tokens. Only the recipient can call this.
     pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
         let clock = Clock::get()?;
         let now = clock.unix_timestamp;
 
-        // Phase 1: validate and compute (immutable borrow, dropped at end of block)
         let (creator_key, recipient_key, mint_key, bump, claimable, new_claimed, completed) = {
             let stream = &ctx.accounts.stream;
-            require!(
-                stream.status == StreamStatus::Active,
-                VeztraError::StreamNotActive
-            );
+
+            // Check stream status
+            match stream.status {
+                StreamStatus::Cancelled => return err!(VeztraError::AlreadyCancelled),
+                StreamStatus::Completed => return err!(VeztraError::FullyVested),
+                StreamStatus::Active => {}
+            }
+
+            // Cliff guard
             if let Some(cliff) = stream.cliff_time {
                 require!(now >= cliff, VeztraError::CliffNotReached);
             }
+
+            // Milestone guard
+            if matches!(stream.vesting_type, VestingType::Milestone) {
+                require!(stream.milestone_unlocked, VeztraError::MilestoneNotUnlocked);
+            }
+
+            // Stream expiry check
+            if now > stream.end_time + 60 * 60 * 24 * 365 {
+                // 1-year grace period; flag expired streams
+                return err!(VeztraError::StreamExpired);
+            }
+
             let vested = calculate_vested(stream, now);
             let claimable = vested.saturating_sub(stream.claimed_amount);
             require!(claimable > 0, VeztraError::NothingToWithdraw);
@@ -93,7 +117,6 @@ pub mod token_distribution {
             )
         };
 
-        // Phase 2: CPI transfer from vault to recipient
         let seeds: &[&[&[u8]]] = &[&[
             b"stream",
             creator_key.as_ref(),
@@ -115,7 +138,6 @@ pub mod token_distribution {
             claimable,
         )?;
 
-        // Phase 3: update state
         let stream = &mut ctx.accounts.stream;
         stream.claimed_amount = new_claimed;
         if completed {
@@ -131,20 +153,25 @@ pub mod token_distribution {
         Ok(())
     }
 
+    /// Cancel a stream. Only the creator can call this.
+    /// Vested-but-unclaimed tokens go to recipient; unvested tokens return to creator.
     pub fn cancel_stream(ctx: Context<CancelStream>) -> Result<()> {
         let clock = Clock::get()?;
         let now = clock.unix_timestamp;
 
-        // Phase 1: validate and compute (immutable borrow)
         let (creator_key, recipient_key, mint_key, bump, unclaimed_vested, unvested) = {
             let stream = &ctx.accounts.stream;
-            require!(
-                stream.status == StreamStatus::Active,
-                VeztraError::StreamNotActive
-            );
+
+            match stream.status {
+                StreamStatus::Cancelled => return err!(VeztraError::AlreadyCancelled),
+                StreamStatus::Completed => return err!(VeztraError::FullyVested),
+                StreamStatus::Active => {}
+            }
+
             let vested = calculate_vested(stream, now);
             let unclaimed_vested = vested.saturating_sub(stream.claimed_amount);
             let unvested = stream.amount.saturating_sub(vested);
+
             (
                 stream.creator,
                 stream.recipient,
@@ -163,7 +190,6 @@ pub mod token_distribution {
             &[bump],
         ]];
 
-        // Phase 2: send vested but unclaimed tokens to recipient
         if unclaimed_vested > 0 {
             token::transfer(
                 CpiContext::new_with_signer(
@@ -179,7 +205,6 @@ pub mod token_distribution {
             )?;
         }
 
-        // Return unvested tokens to creator
         if unvested > 0 {
             token::transfer(
                 CpiContext::new_with_signer(
@@ -195,7 +220,6 @@ pub mod token_distribution {
             )?;
         }
 
-        // Phase 3: update state
         ctx.accounts.stream.status = StreamStatus::Cancelled;
 
         emit!(StreamCancelled {
@@ -206,7 +230,38 @@ pub mod token_distribution {
 
         Ok(())
     }
+
+    /// Unlock a milestone stream. Only the creator can call this.
+    /// Once unlocked, the recipient can withdraw the full amount.
+    pub fn unlock_milestone(ctx: Context<UnlockMilestone>) -> Result<()> {
+        let stream = &mut ctx.accounts.stream;
+
+        require!(
+            matches!(stream.vesting_type, VestingType::Milestone),
+            VeztraError::NotMilestoneStream
+        );
+
+        match stream.status {
+            StreamStatus::Cancelled => return err!(VeztraError::AlreadyCancelled),
+            StreamStatus::Completed => return err!(VeztraError::FullyVested),
+            StreamStatus::Active => {}
+        }
+
+        require!(!stream.milestone_unlocked, VeztraError::MilestoneAlreadyUnlocked);
+
+        stream.milestone_unlocked = true;
+
+        emit!(MilestoneUnlocked {
+            stream: stream.key(),
+            creator: ctx.accounts.creator.key(),
+            recipient: stream.recipient,
+        });
+
+        Ok(())
+    }
 }
+
+// ── Vested amount calculation ─────────────────────────────────────────────
 
 fn calculate_vested(stream: &StreamAccount, now: i64) -> u64 {
     if now <= stream.start_time {
@@ -217,25 +272,32 @@ fn calculate_vested(stream: &StreamAccount, now: i64) -> u64 {
     }
     match stream.vesting_type {
         VestingType::Linear => {
+            // Cliff: no tokens until cliff_time, then linear from start
+            if let Some(cliff) = stream.cliff_time {
+                if now < cliff {
+                    return 0;
+                }
+            }
             let elapsed = (now - stream.start_time) as u128;
             let total = (stream.end_time - stream.start_time) as u128;
             ((stream.amount as u128) * elapsed / total) as u64
         }
         VestingType::Cliff => {
+            // All-or-nothing: nothing until cliff_time, then 100%
             if let Some(cliff) = stream.cliff_time {
-                if now >= cliff {
-                    stream.amount
-                } else {
-                    0
-                }
+                if now >= cliff { stream.amount } else { 0 }
             } else {
                 stream.amount
             }
         }
+        VestingType::Milestone => {
+            // All-or-nothing: nothing until milestone_unlocked
+            if stream.milestone_unlocked { stream.amount } else { 0 }
+        }
     }
 }
 
-// ─── Account Structs ───────────────────────────────────────────────────────
+// ── Account Contexts ──────────────────────────────────────────────────────
 
 #[derive(Accounts)]
 #[instruction(amount: u64, start_time: i64, end_time: i64, cliff_time: Option<i64>, vesting_type: VestingType)]
@@ -243,7 +305,7 @@ pub struct CreateStream<'info> {
     #[account(mut)]
     pub creator: Signer<'info>,
 
-    /// CHECK: only used as pubkey reference for PDA seeds — no ownership check needed
+    /// CHECK: only used as pubkey reference for PDA seeds
     pub recipient: UncheckedAccount<'info>,
 
     pub mint: Account<'info, Mint>,
@@ -371,33 +433,55 @@ pub struct CancelStream<'info> {
     pub system_program: Program<'info, System>,
 }
 
-// ─── Data Structures ──────────────────────────────────────────────────────
+#[derive(Accounts)]
+pub struct UnlockMilestone<'info> {
+    #[account(
+        mut,
+        seeds = [b"stream", creator.key().as_ref(), recipient.key().as_ref(), mint.key().as_ref()],
+        bump = stream.bump,
+        has_one = creator,
+    )]
+    pub stream: Account<'info, StreamAccount>,
+
+    #[account(mut)]
+    pub creator: Signer<'info>,
+
+    /// CHECK: used only for PDA seed — validated via has_one indirectly
+    pub recipient: UncheckedAccount<'info>,
+
+    pub mint: Account<'info, Mint>,
+}
+
+// ── Data Structures ───────────────────────────────────────────────────────
 
 #[account]
 pub struct StreamAccount {
-    pub creator: Pubkey,            // 32
-    pub recipient: Pubkey,          // 32
-    pub mint: Pubkey,               // 32
-    pub vault: Pubkey,              // 32
-    pub amount: u64,                // 8
-    pub claimed_amount: u64,        // 8
-    pub start_time: i64,            // 8
-    pub end_time: i64,              // 8
-    pub cliff_time: Option<i64>,    // 9
-    pub vesting_type: VestingType,  // 1
-    pub status: StreamStatus,       // 1
-    pub bump: u8,                   // 1
-                                    // padding: 64
+    pub creator: Pubkey,               // 32
+    pub recipient: Pubkey,             // 32
+    pub mint: Pubkey,                  // 32
+    pub vault: Pubkey,                 // 32
+    pub amount: u64,                   // 8
+    pub claimed_amount: u64,           // 8
+    pub start_time: i64,               // 8
+    pub end_time: i64,                 // 8
+    pub cliff_time: Option<i64>,       // 9
+    pub vesting_type: VestingType,     // 1
+    pub status: StreamStatus,          // 1
+    pub bump: u8,                      // 1
+    pub milestone_unlocked: bool,      // 1 (uses 1 byte from previous padding)
+                                       // padding: 63
 }
 
 impl StreamAccount {
-    pub const LEN: usize = 8 + 32 + 32 + 32 + 32 + 8 + 8 + 8 + 8 + 9 + 1 + 1 + 1 + 64;
+    // 8 discriminator + 32+32+32+32 + 8+8+8+8 + 9 + 1+1+1+1 + 63 padding = 244
+    pub const LEN: usize = 8 + 32 + 32 + 32 + 32 + 8 + 8 + 8 + 8 + 9 + 1 + 1 + 1 + 1 + 63;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum VestingType {
     Linear,
     Cliff,
+    Milestone,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
@@ -407,7 +491,7 @@ pub enum StreamStatus {
     Cancelled,
 }
 
-// ─── Events ───────────────────────────────────────────────────────────────
+// ── Events ────────────────────────────────────────────────────────────────
 
 #[event]
 pub struct StreamCreated {
@@ -417,6 +501,7 @@ pub struct StreamCreated {
     pub amount: u64,
     pub start_time: i64,
     pub end_time: i64,
+    pub vesting_type_label: String,
 }
 
 #[event]
@@ -433,20 +518,46 @@ pub struct StreamCancelled {
     pub unvested_returned: u64,
 }
 
-// ─── Errors ───────────────────────────────────────────────────────────────
+#[event]
+pub struct MilestoneUnlocked {
+    pub stream: Pubkey,
+    pub creator: Pubkey,
+    pub recipient: Pubkey,
+}
+
+// ── Errors ────────────────────────────────────────────────────────────────
 
 #[error_code]
 pub enum VeztraError {
+    // Validation errors
     #[msg("Amount must be greater than zero")]
-    InvalidAmount,
+    InvalidAmount,                      // 6000
     #[msg("End time must be after start time")]
-    InvalidTimeRange,
-    #[msg("Cliff time must be between start and end time")]
-    InvalidCliffTime,
-    #[msg("Stream is not active")]
-    StreamNotActive,
-    #[msg("Cliff period not reached yet")]
-    CliffNotReached,
+    InvalidTimeRange,                   // 6001
+    #[msg("Cliff time must be between start and end times")]
+    InvalidCliffTime,                   // 6002
+
+    // Authorization errors
+    #[msg("Unauthorized: only the stream creator can perform this action")]
+    Unauthorized,                       // 6003
+
+    // Stream state errors
+    #[msg("Stream has already been cancelled")]
+    AlreadyCancelled,                   // 6004
+    #[msg("Stream is fully vested — nothing to cancel or withdraw")]
+    FullyVested,                        // 6005
     #[msg("Nothing to withdraw at this time")]
-    NothingToWithdraw,
+    NothingToWithdraw,                  // 6006
+    #[msg("Cliff period has not been reached yet")]
+    CliffNotReached,                    // 6007
+    #[msg("Stream has expired beyond the grace period")]
+    StreamExpired,                      // 6008
+
+    // Milestone errors
+    #[msg("This stream is not a milestone-type stream")]
+    NotMilestoneStream,                 // 6009
+    #[msg("Milestone has already been unlocked")]
+    MilestoneAlreadyUnlocked,           // 6010
+    #[msg("Milestone has not been unlocked yet — creator must unlock first")]
+    MilestoneNotUnlocked,               // 6011
 }

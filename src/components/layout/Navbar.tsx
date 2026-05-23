@@ -70,6 +70,27 @@ export function Navbar() {
           </div>
         )}
 
+        {isApp && (
+          <div className="hidden md:flex items-center gap-6">
+            {[
+              { href: '/dashboard', label: 'Dashboard' },
+              { href: '/explore', label: 'Explore' },
+              { href: '/docs', label: 'Docs' },
+            ].map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={clsx(
+                  'text-sm font-body transition-colors',
+                  pathname === link.href ? 'text-sol-purple' : 'text-text-secondary hover:text-text-primary'
+                )}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-center gap-3">
           <WalletButton />
           {!isApp && (
