@@ -2,7 +2,7 @@ import { clusterApiUrl } from '@solana/web3.js'
 
 export const NETWORK = (process.env.NEXT_PUBLIC_NETWORK as 'devnet' | 'mainnet-beta') || 'devnet'
 export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || clusterApiUrl('devnet')
-export const PROGRAM_ID = process.env.NEXT_PUBLIC_PROGRAM_ID || '25VqBegEhXzpf7pXHpBYxHaRx1fMwM2fwvH446RaBkK2'
+export const PROGRAM_ID = process.env.NEXT_PUBLIC_PROGRAM_ID || 'GarNqFaBLcyhb3knGu7s9qkESPJvVD7wHKDakWbCWiVC'
 
 export const DEVNET_TEST_TOKEN = 'So11111111111111111111111111111111111111112'
 
