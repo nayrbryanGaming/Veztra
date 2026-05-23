@@ -12,6 +12,11 @@ jobs:
         with:
           ref: week6/bryan-frontend
 
+      - name: Pin Rust to 1.87 (must be installed before Solana/AVM)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.87"
+
       - name: Install Solana CLI
         run: |
           sh -c "$(curl -sSfL https://release.anza.xyz/v2.2.1/install)"
@@ -24,19 +29,17 @@ jobs:
           avm use 0.32.0
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
 
-      - name: Pin Rust to 1.87 (edition2024 requires >=1.85)
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: "1.87"
-
-      - name: Verify Rust version
+      - name: Pre-generate Cargo.lock with Rust 1.87 to pin transitive deps
+        # Platform-tools cargo (1.84) cannot parse toml_datetime>=1.1.1 (needs edition2024).
+        # Generate the lock file first with system cargo so it resolves an older dep tree.
+        working-directory: contract
+        env:
+          RUSTUP_TOOLCHAIN: "1.87"
         run: |
-          rustup default 1.87
-          rustup update 1.87
-          which rustc
-          rustc --version
-          which cargo
-          cargo --version
+          echo "Using cargo: $(which cargo) -- $(cargo --version)"
+          cargo +1.87 generate-lockfile
+          echo "Cargo.lock generated. Checking for toml_datetime:"
+          grep "toml_datetime" Cargo.lock | head -5
 
       - name: Set up deploy wallet
         run: |
@@ -54,11 +57,8 @@ jobs:
 
       - name: Build Anchor program
         working-directory: contract
-        env:
-          RUSTUP_TOOLCHAIN: "1.87"
         run: |
-          rustc --version
-          cargo --version
+          echo "anchor version: $(anchor --version)"
           anchor build
 
       - name: Deploy to devnet
