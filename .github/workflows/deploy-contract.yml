@@ -10,13 +10,15 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install Rust stable
+      - name: Install Rust stable (≥1.85 required for edition2024)
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Rust build
-        uses: Swatinem/rust-cache@v2
-        with:
-          workdir: contract
+      - name: Ensure latest stable Rust
+        run: |
+          rustup update stable
+          rustup default stable
+          rustc --version
+          cargo --version
 
       - name: Install Solana CLI
         run: |
@@ -46,7 +48,9 @@ jobs:
 
       - name: Build Anchor program
         working-directory: contract
-        run: anchor build
+        run: |
+          rustup show
+          anchor build
 
       - name: Deploy to devnet
         working-directory: contract
