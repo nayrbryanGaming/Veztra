@@ -15,9 +15,9 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Solana CLI
+      - name: Install Solana CLI (stable = newest platform-tools with Rust 1.85+)
         run: |
-          sh -c "$(curl -sSfL https://release.anza.xyz/v2.2.1/install)"
+          sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Set up deploy wallet
