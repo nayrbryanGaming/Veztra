@@ -12,16 +12,6 @@ jobs:
         with:
           ref: week6/bryan-frontend
 
-      - name: Install Rust stable (≥1.85 required for edition2024)
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Ensure latest stable Rust
-        run: |
-          rustup update stable
-          rustup default stable
-          rustc --version
-          cargo --version
-
       - name: Install Solana CLI
         run: |
           sh -c "$(curl -sSfL https://release.anza.xyz/v2.2.1/install)"
@@ -33,6 +23,20 @@ jobs:
           avm install 0.32.0
           avm use 0.32.0
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
+
+      - name: Pin Rust to 1.87 (edition2024 requires >=1.85)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.87"
+
+      - name: Verify Rust version
+        run: |
+          rustup default 1.87
+          rustup update 1.87
+          which rustc
+          rustc --version
+          which cargo
+          cargo --version
 
       - name: Set up deploy wallet
         run: |
@@ -50,8 +54,11 @@ jobs:
 
       - name: Build Anchor program
         working-directory: contract
+        env:
+          RUSTUP_TOOLCHAIN: "1.87"
         run: |
-          rustup show
+          rustc --version
+          cargo --version
           anchor build
 
       - name: Deploy to devnet
