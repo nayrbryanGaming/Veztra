@@ -34,7 +34,7 @@ export function UseCases() {
               backgroundClip: 'text',
             }}
           >
-            Vestra.
+            VEZTRA.
           </span>
         </h2>
       </div>

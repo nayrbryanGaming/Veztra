@@ -8,17 +8,18 @@ export function Footer() {
         <div className="flex flex-col md:flex-row justify-between gap-8">
           <div className="space-y-3">
             <div className="flex items-center gap-2.5">
-              <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
-                <defs>
-                  <linearGradient id="vGrad2" x1="0" y1="0" x2="28" y2="28">
-                    <stop offset="0%" stopColor="#9945FF" />
-                    <stop offset="100%" stopColor="#14F195" />
-                  </linearGradient>
-                </defs>
-                <path d="M2 4 L14 22 L26 4" stroke="url(#vGrad2)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                <circle cx="14" cy="22" r="2.5" fill="url(#vGrad2)" />
-              </svg>
-              <span className="font-display font-bold text-text-primary tracking-wide">VESTRA</span>
+              <img src="/logo.png" alt="VEZTRA" className="w-6 h-6 object-contain" />
+              <span
+                className="font-display font-bold tracking-wider"
+                style={{
+                  background: 'linear-gradient(90deg, #9945FF, #00C2FF)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
+              >
+                VEZTRA
+              </span>
             </div>
             <p className="text-sm text-text-muted max-w-xs">
               Solana-native token vesting and distribution infrastructure.
@@ -37,7 +38,7 @@ export function Footer() {
             <div className="space-y-2">
               <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Links</p>
               <nav className="flex flex-col gap-2">
-                <a href="https://github.com/nayrbryanGaming/Vestra" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">GitHub</a>
+                <a href="https://github.com/nayrbryanGaming/Veztra" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">GitHub</a>
                 <a href="https://solana.com" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">Solana</a>
               </nav>
             </div>
@@ -46,7 +47,7 @@ export function Footer() {
 
         <div className="mt-10 pt-6 border-t border-bg-border flex flex-col sm:flex-row justify-between items-center gap-3">
           <p className="text-xs text-text-muted font-mono">
-            © 2026 VESTRA · BUILT ON SOLANA
+            © 2026 VEZTRA · FLEXIBLE VESTING. TRANSPARENT DISTRIBUTION.
           </p>
           <Badge variant="devnet">● DEVNET</Badge>
         </div>

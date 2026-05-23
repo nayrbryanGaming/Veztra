@@ -6,8 +6,8 @@ import { clsx } from 'clsx'
 
 const faqs = [
   {
-    q: 'What is Vestra?',
-    a: 'Vestra is a token distribution protocol on Solana. It lets project teams create vesting streams for team members, investors, and contributors — directly on-chain, with no intermediary.',
+    q: 'What is VEZTRA?',
+    a: 'VEZTRA is a token distribution protocol on Solana. It lets project teams create vesting streams for team members, investors, and contributors — directly on-chain, with no intermediary.',
   },
   {
     q: 'Who controls the locked tokens?',

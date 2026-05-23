@@ -8,19 +8,19 @@ import { WalletButton } from '@/components/wallet/WalletButton'
 import { Badge } from '@/components/ui/Badge'
 import { clsx } from 'clsx'
 
-const VestraLogo = () => (
+const VeztraLogo = () => (
   <div className="flex items-center gap-2.5">
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-      <defs>
-        <linearGradient id="vGrad" x1="0" y1="0" x2="28" y2="28">
-          <stop offset="0%" stopColor="#9945FF" />
-          <stop offset="100%" stopColor="#14F195" />
-        </linearGradient>
-      </defs>
-      <path d="M2 4 L14 22 L26 4" stroke="url(#vGrad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <circle cx="14" cy="22" r="2.5" fill="url(#vGrad)" />
-    </svg>
-    <span className="font-display font-bold text-lg text-text-primary tracking-wide">VESTRA</span>
+    <img src="/logo.png" alt="VEZTRA" className="w-8 h-8 object-contain" />
+    <span className="font-display font-bold text-lg tracking-wider"
+      style={{
+        background: 'linear-gradient(90deg, #9945FF, #00C2FF)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        backgroundClip: 'text',
+      }}
+    >
+      VEZTRA
+    </span>
   </div>
 )
 
@@ -51,7 +51,7 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <Link href="/">
           <div className="flex items-center gap-3">
-            <VestraLogo />
+            <VeztraLogo />
             <Badge variant="devnet">DEVNET</Badge>
           </div>
         </Link>
@@ -75,7 +75,8 @@ export function Navbar() {
           {!isApp && (
             <Link
               href="/dashboard"
-              className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-body font-medium bg-gradient-to-r from-sol-purple to-sol-green text-bg-void hover:scale-[1.02] transition-all duration-200 shadow-glow-sm"
+              className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-body font-medium text-bg-void hover:scale-[1.02] transition-all duration-200"
+              style={{ background: 'linear-gradient(90deg, #9945FF, #00C2FF)' }}
             >
               Launch App
             </Link>
@@ -105,7 +106,8 @@ export function Navbar() {
           ))}
           <Link
             href="/dashboard"
-            className="block w-full text-center px-5 py-2.5 rounded-xl text-sm font-body font-medium bg-gradient-to-r from-sol-purple to-sol-green text-bg-void"
+            className="block w-full text-center px-5 py-2.5 rounded-xl text-sm font-body font-medium text-bg-void"
+            style={{ background: 'linear-gradient(90deg, #9945FF, #00C2FF)' }}
             onClick={() => setMobileOpen(false)}
           >
             Launch App

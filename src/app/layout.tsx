@@ -26,12 +26,12 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Vestra — Programmable Token Distribution Infrastructure',
-  description: 'Flexible vesting infrastructure, powered onchain. Manage token allocation, milestone unlocks, and treasury distribution with transparency on Solana.',
+  title: 'VEZTRA — Flexible Vesting. Transparent Distribution.',
+  description: 'Solana-native token vesting and distribution protocol. Manage token allocation, milestone unlocks, and treasury distribution with full on-chain transparency.',
   openGraph: {
-    title: 'Vestra — Programmable Token Distribution',
-    description: 'Flexible vesting infrastructure, powered onchain.',
-    siteName: 'Vestra',
+    title: 'VEZTRA — Flexible Vesting. Transparent Distribution.',
+    description: 'Solana-native token vesting and distribution protocol.',
+    siteName: 'VEZTRA',
   },
 }
 

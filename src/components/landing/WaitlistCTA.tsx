@@ -20,7 +20,7 @@ export function WaitlistCTA() {
               backgroundClip: 'text',
             }}
           >
-            with Vestra.
+            with VEZTRA.
           </span>
         </h2>
         <p className="text-text-secondary text-lg">
@@ -34,7 +34,7 @@ export function WaitlistCTA() {
             Launch App <ArrowRight className="w-4 h-4" />
           </Link>
           <a
-            href="https://github.com/nayrbryanGaming/Vestra"
+            href="https://github.com/nayrbryanGaming/Veztra"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-8 py-4 rounded-full text-base font-body font-medium text-text-secondary border border-bg-border hover:border-sol-purple/40 hover:text-text-primary transition-all duration-200"
