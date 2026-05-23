@@ -1,0 +1,67 @@
+name: Deploy Anchor Contract to Devnet
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workdir: contract
+
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/v2.2.1/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Install Anchor CLI via AVM
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+          avm install 0.32.0
+          avm use 0.32.0
+          echo "$HOME/.avm/bin" >> $GITHUB_PATH
+
+      - name: Set up deploy wallet
+        run: |
+          mkdir -p ~/.config/solana
+          echo '${{ secrets.SOLANA_KEYPAIR }}' > ~/.config/solana/id.json
+          solana config set --url devnet
+          solana config set --keypair ~/.config/solana/id.json
+          echo "Deployer: $(solana address)"
+          solana balance
+
+      - name: Restore program keypair
+        run: |
+          mkdir -p contract/target/deploy
+          echo '${{ secrets.PROGRAM_KEYPAIR }}' > contract/target/deploy/token_distribution-keypair.json
+
+      - name: Build Anchor program
+        working-directory: contract
+        run: anchor build
+
+      - name: Deploy to devnet
+        working-directory: contract
+        run: |
+          anchor deploy --provider.cluster devnet 2>&1 | tee deploy.log
+          PROGRAM_ID=$(cat deploy.log | grep "Program Id:" | awk '{print $NF}')
+          echo "PROGRAM_ID=$PROGRAM_ID" >> $GITHUB_ENV
+          echo "Deployed: $PROGRAM_ID"
+
+      - name: Summary
+        run: |
+          echo "## ✅ VEZTRA Contract Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Program ID:** \`${{ env.PROGRAM_ID }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Explorer:** https://explorer.solana.com/address/${{ env.PROGRAM_ID }}?cluster=devnet" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next step:** Update \`NEXT_PUBLIC_PROGRAM_ID\` in Vercel dashboard to \`${{ env.PROGRAM_ID }}\`" >> $GITHUB_STEP_SUMMARY
