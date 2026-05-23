@@ -9,6 +9,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          ref: week6/bryan-frontend
 
       - name: Install Rust stable (≥1.85 required for edition2024)
         uses: dtolnay/rust-toolchain@stable
